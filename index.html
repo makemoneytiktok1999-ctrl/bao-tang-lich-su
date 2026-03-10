@@ -1,0 +1,1069 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Bảo tàng AI - Các vua triều Nguyễn</title>
+
+  <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+  <script defer src="https://unpkg.com/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#f7f3ec;
+      --card:#ffffff;
+      --primary:#8b5e3c;
+      --primary2:#c89b61;
+      --text:#2f2923;
+      --muted:#6f675f;
+      --line:#e8ddcf;
+      --ok:#2e7d32;
+      --warn:#ef6c00;
+      --shadow:0 12px 28px rgba(0,0,0,.08);
+      --radius:20px;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family:"Be Vietnam Pro", sans-serif;
+      color:var(--text);
+      background:linear-gradient(180deg,#fcfaf7 0%, #f5efe6 100%);
+    }
+
+    .wrap{
+      max-width:1200px;
+      margin:0 auto;
+      padding:20px;
+    }
+
+    .topbar{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:22px;
+      margin-bottom:20px;
+    }
+
+    .title{
+      margin:0;
+      font-size:30px;
+      font-weight:800;
+      color:var(--primary);
+    }
+
+    .subtitle{
+      margin:8px 0 0;
+      color:var(--muted);
+      line-height:1.7;
+      font-size:15px;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:420px 1fr;
+      gap:20px;
+    }
+
+    @media (max-width:980px){
+      .grid{ grid-template-columns:1fr; }
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:20px;
+    }
+
+    .controls{
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      margin-bottom:16px;
+    }
+
+    button, select, label.toggle{
+      border-radius:14px;
+      font-size:15px;
+      font-family:inherit;
+      padding:12px 16px;
+    }
+
+    button{
+      border:none;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    button.primary{
+      background:linear-gradient(135deg,var(--primary),var(--primary2));
+      color:#fff;
+    }
+
+    button.secondary{
+      background:#f4eee7;
+      color:var(--text);
+      border:1px solid var(--line);
+    }
+
+    button:disabled{
+      opacity:.55;
+      cursor:not-allowed;
+    }
+
+    select{
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--text);
+      min-width:180px;
+    }
+
+    label.toggle{
+      border:1px solid var(--line);
+      background:#fff;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-weight:600;
+      cursor:pointer;
+    }
+
+    .cameraWrap{
+      position:relative;
+      overflow:hidden;
+      border-radius:18px;
+      background:#111;
+      border:3px solid #ddd0c0;
+    }
+
+    video{
+      width:100%;
+      aspect-ratio:1/1;
+      object-fit:cover;
+      display:block;
+      background:#111;
+      transform:scaleX(-1);
+    }
+
+    canvas{ display:none; }
+
+    .scanner{
+      position:absolute;
+      inset:12px;
+      border:3px solid rgba(255,255,255,.36);
+      border-radius:16px;
+      pointer-events:none;
+      display:none;
+      overflow:hidden;
+    }
+
+    .scanner.active{ display:block; }
+
+    .scanner-line{
+      position:absolute;
+      left:0;
+      right:0;
+      height:4px;
+      background:linear-gradient(90deg,transparent,#ffd54f,#fff59d,transparent);
+      box-shadow:0 0 14px rgba(255,213,79,.95);
+      animation:scan 2s linear infinite;
+    }
+
+    @keyframes scan{
+      from{ top:0; }
+      to{ top:calc(100% - 4px); }
+    }
+
+    .status{
+      margin-top:14px;
+      padding:14px 16px;
+      border-radius:14px;
+      background:#f8f3ec;
+      border:1px solid var(--line);
+      font-weight:600;
+      line-height:1.6;
+    }
+
+    .tip{
+      margin-top:10px;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.6;
+    }
+
+    .name{
+      margin:0;
+      font-size:34px;
+      font-weight:800;
+      color:var(--primary);
+      line-height:1.25;
+    }
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      margin-top:12px;
+      padding:10px 14px;
+      border-radius:999px;
+      background:#f8f3ec;
+      border:1px solid var(--line);
+      font-size:14px;
+      font-weight:700;
+    }
+
+    .progress{
+      margin-top:14px;
+      width:100%;
+      height:12px;
+      background:#efe4d7;
+      border-radius:999px;
+      overflow:hidden;
+      display:none;
+    }
+
+    .progress.active{ display:block; }
+
+    .bar{
+      height:100%;
+      width:0%;
+      background:linear-gradient(90deg,#ffb74d,#66bb6a);
+      transition:width .12s linear;
+    }
+
+    .timeline{
+      margin-top:20px;
+      padding:16px;
+      border-radius:16px;
+      background:#fcfaf7;
+      border:1px solid var(--line);
+    }
+
+    .timelineTop{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:14px;
+    }
+
+    .timelineTitle{
+      font-weight:800;
+      color:var(--primary);
+    }
+
+    .timelineMeta{
+      color:var(--muted);
+      font-size:14px;
+    }
+
+    .nodes{
+      display:flex;
+      justify-content:space-between;
+      gap:6px;
+      position:relative;
+    }
+
+    .nodes::before{
+      content:"";
+      position:absolute;
+      top:50%;
+      left:0;
+      right:0;
+      height:3px;
+      transform:translateY(-50%);
+      background:#eadfce;
+      z-index:0;
+    }
+
+    .node{
+      position:relative;
+      z-index:1;
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      background:#d9c9b6;
+      border:3px solid #fff;
+      box-shadow:0 2px 6px rgba(0,0,0,.07);
+    }
+
+    .node.past{ background:#c89b61; }
+    .node.active{
+      background:#4caf50;
+      transform:scale(1.22);
+    }
+
+    .descBox{
+      margin-top:20px;
+      padding:18px;
+      border-radius:16px;
+      background:#fffdf9;
+      border:1px solid var(--line);
+      line-height:1.85;
+      font-size:18px;
+      white-space:pre-line;
+    }
+
+    .quiz{
+      margin-top:20px;
+      padding:18px;
+      border-radius:16px;
+      background:#fbf8f3;
+      border:1px solid var(--line);
+    }
+
+    .hidden{ display:none !important; }
+
+    .quiz h3{
+      margin:0 0 12px;
+      color:var(--primary);
+      font-size:20px;
+    }
+
+    .quizQ{
+      margin:0 0 16px;
+      font-weight:700;
+      line-height:1.6;
+    }
+
+    .quizOpts{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+
+    @media (max-width:680px){
+      .quizOpts{ grid-template-columns:1fr; }
+    }
+
+    .quizOpts button{
+      text-align:left;
+      background:#fff;
+      border:1px solid var(--line);
+      color:var(--text);
+      font-weight:700;
+    }
+
+    .quizOpts button.correct{
+      background:#e8f5e9;
+      border-color:#81c784;
+    }
+
+    .quizOpts button.wrong{
+      background:#ffebee;
+      border-color:#ef9a9a;
+    }
+
+    .quizFeedback{
+      margin-top:14px;
+      min-height:24px;
+      font-weight:700;
+    }
+
+    .speaker{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:36px;
+      height:36px;
+      margin-left:10px;
+      border-radius:50%;
+      background:#fff8e1;
+      border:1px solid #f0d98a;
+      vertical-align:middle;
+      animation:pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse{
+      from{ transform:scale(1); }
+      to{ transform:scale(1.08); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <h1 class="title">Bảo tàng AI - Các vua triều Nguyễn</h1>
+      <p class="subtitle">
+        Hãy đưa ảnh của một vị vua triều Nguyễn vào trước camera.
+        Khi nhận diện thành công, hệ thống sẽ giới thiệu thông tin và phát giọng thuyết minh tương ứng.
+      </p>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="controls">
+          <button class="primary" id="btnStart">Bắt đầu camera</button>
+          <button class="secondary" id="btnStop" disabled>Dừng</button>
+        </div>
+
+        <div class="controls">
+          <select id="cameraSelect"></select>
+          <label class="toggle">
+            <input type="checkbox" id="timelineToggle" checked />
+            Hiện dòng thời gian
+          </label>
+        </div>
+
+        <div class="cameraWrap">
+          <video id="video" autoplay playsinline muted></video>
+          <div class="scanner" id="scanner">
+            <div class="scanner-line"></div>
+          </div>
+          <canvas id="canvas" width="400" height="400"></canvas>
+        </div>
+
+        <div class="status" id="status">Hệ thống đang chờ khởi động.</div>
+        <div class="tip">
+          Mẹo: Giữ ảnh thẳng, đủ sáng và đứng yên vài giây để AI nhận diện nhanh hơn.
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="name" id="artifactName">Chưa nhận diện</h2>
+
+        <div class="pill" id="confidencePill">AI đang chờ hình ảnh...</div>
+
+        <div class="progress" id="detectProgress">
+          <div class="bar" id="detectBar"></div>
+        </div>
+
+        <div class="timeline" id="timelineBox">
+          <div class="timelineTop">
+            <div class="timelineTitle" id="timelineText">Triều Nguyễn</div>
+            <div class="timelineMeta" id="timelineMeta">13 vị vua</div>
+          </div>
+          <div class="nodes" id="timelineNodes"></div>
+        </div>
+
+        <div class="descBox" id="desc">
+Khi AI nhận ra vị vua, phần giới thiệu sẽ hiện ở đây.
+        </div>
+
+        <div class="quiz hidden" id="quizBox">
+          <h3>Câu hỏi nhanh</h3>
+          <p class="quizQ" id="quizQ">—</p>
+          <div class="quizOpts" id="quizOpts"></div>
+          <div class="quizFeedback" id="quizFeedback"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const MODEL_DIR = "./model/";
+  const AUDIO_DIR = "./audio/";
+
+  const THRESHOLD = 0.95;
+  const STABLE_FRAMES = 10;
+  const COOLDOWN_MS = 9000;
+
+  // =========================
+  // 1. DỮ LIỆU
+  // =========================
+  const timelineData = {
+    "VUA GIA LONG":   { order: 1,  years: "1802 - 1820" },
+    "VUA MINH MẠNG":  { order: 2,  years: "1820 - 1841" },
+    "VUA THIỆU TRỊ":  { order: 3,  years: "1841 - 1847" },
+    "VUA TỰ ĐỨC":     { order: 4,  years: "1847 - 1883" },
+    "VUA DỤC ĐỨC":    { order: 5,  years: "1883" },
+    "VUA HIỆP HÒA":   { order: 6,  years: "1883" },
+    "VUA KIẾN PHÚC":  { order: 7,  years: "1883 - 1884" },
+    "VUA HÀM NGHI":   { order: 8,  years: "1884 - 1885" },
+    "VUA ĐỒNG KHÁNH": { order: 9,  years: "1885 - 1889" },
+    "VUA THÀNH THÁI": { order: 10, years: "1889 - 1907" },
+    "VUA DUY TÂN":    { order: 11, years: "1907 - 1916" },
+    "VUA KHẢI ĐỊNH":  { order: 12, years: "1916 - 1925" },
+    "VUA BẢO ĐẠI":    { order: 13, years: "1926 - 1945" }
+  };
+
+  const kingCore = {
+    "VUA GIA LONG":
+`Đây là vua Gia Long, vị hoàng đế đầu tiên của triều Nguyễn.
+Ông là người mở đầu cho một vương triều kéo dài hơn một thế kỷ trong lịch sử Việt Nam.
+Dấu ấn của vua Gia Long gắn liền với buổi đầu thống nhất đất nước và đặt nền móng cho triều Nguyễn.`,
+
+    "VUA MINH MẠNG":
+`Đây là vua Minh Mạng, vị hoàng đế thứ hai của triều Nguyễn.
+Ông tiếp nối cơ nghiệp của tiên đế, củng cố triều chính và xây dựng phép nước ngày càng chặt chẽ.
+Nhắc đến vua Minh Mạng là nhắc đến một giai đoạn đề cao kỷ cương và sự ổn định của quốc gia.`,
+
+    "VUA THIỆU TRỊ":
+`Đây là vua Thiệu Trị, vị hoàng đế thứ ba của triều Nguyễn.
+Dù thời gian trị vì không dài, ông vẫn tiếp nối sự ổn định của hoàng triều và gìn giữ nền nếp cung đình.
+Vua Thiệu Trị là một mắt xích lặng lẽ nhưng cần thiết trong dòng chảy lịch sử nhà Nguyễn.`,
+
+    "VUA TỰ ĐỨC":
+`Đây là vua Tự Đức, vị hoàng đế thứ tư của triều Nguyễn.
+Ông là người yêu văn chương, coi trọng học vấn, và cũng là vị vua trị vì trong một giai đoạn nhiều biến động.
+Nhắc đến vua Tự Đức là nhắc đến chiều sâu văn hóa cùng những nỗi trăn trở trước thời cuộc.`,
+
+    "VUA DỤC ĐỨC":
+`Đây là vua Dục Đức, một vị vua có thời gian ở ngôi rất ngắn trong lịch sử triều Nguyễn.
+Dẫu chỉ xuất hiện trong một khoảng thời gian ngắn ngủi, tên tuổi của ông vẫn gắn với những biến động nơi hoàng cung.
+Lịch sử đôi khi không chỉ nhớ đến những triều đại dài lâu, mà còn nhớ cả những số phận đặc biệt.`,
+
+    "VUA HIỆP HÒA":
+`Đây là vua Hiệp Hòa, vị vua lên ngôi giữa lúc triều Nguyễn đầy rối ren và biến động.
+Thời gian trị vì của ông ngắn ngủi, gắn với một giai đoạn nhiều khó khăn trong triều chính.
+Tên tuổi của vua Hiệp Hòa vì thế trở thành một dấu mốc đáng nhớ trong thời kỳ bất ổn của hoàng triều.`,
+
+    "VUA KIẾN PHÚC":
+`Đây là vua Kiến Phúc, một vị vua trẻ của triều Nguyễn.
+Ông lên ngôi khi tuổi đời còn nhỏ, trong bối cảnh triều đình đang trải qua nhiều biến chuyển phức tạp.
+Cuộc đời của vua Kiến Phúc cho thấy sự mong manh của quyền lực giữa dòng xoáy lịch sử.`,
+
+    "VUA HÀM NGHI":
+`Đây là vua Hàm Nghi, vị vua gắn liền với tinh thần yêu nước và ý chí kháng cự.
+Tên tuổi của ông thường được nhắc đến cùng phong trào Cần Vương chống thực dân.
+Dẫu không giữ được ngai vàng, vua Hàm Nghi vẫn được nhớ đến như một biểu tượng của lòng tự tôn dân tộc.`,
+
+    "VUA ĐỒNG KHÁNH":
+`Đây là vua Đồng Khánh, vị vua lên ngôi trong một giai đoạn đặc biệt nhạy cảm của triều Nguyễn.
+Triều đại của ông gắn với nhiều thay đổi lớn trong bối cảnh chính trị của đất nước.
+Nhắc đến vua Đồng Khánh là nhắc đến một giai đoạn lịch sử có nhiều góc nhìn và nhiều tranh luận.`,
+
+    "VUA THÀNH THÁI":
+`Đây là vua Thành Thái, một vị vua được nhớ đến bởi tư chất thông minh và tinh thần dân tộc.
+Ông luôn có ý thức trước hoàn cảnh đất nước và không dễ dàng chấp nhận sự ràng buộc của thời cuộc.
+Dù trải qua nhiều biến cố, vua Thành Thái vẫn để lại dấu ấn riêng trong lịch sử triều Nguyễn.`,
+
+    "VUA DUY TÂN":
+`Đây là vua Duy Tân, một vị vua trẻ nhưng mang trong mình ý chí lớn.
+Tên tuổi của ông gắn với lòng yêu nước, sự dũng cảm và khát vọng đổi thay.
+Với nhiều người, vua Duy Tân không chỉ là một vị vua, mà còn là biểu tượng của tuổi trẻ đầy bản lĩnh.`,
+
+    "VUA KHẢI ĐỊNH":
+`Đây là vua Khải Định, vị hoàng đế thứ mười hai của triều Nguyễn.
+Triều đại của ông nằm trong giai đoạn giao thoa giữa truyền thống cung đình và ảnh hưởng mới từ phương Tây.
+Nhắc đến vua Khải Định, người đời thường nhớ đến dấu ấn kiến trúc rất riêng của thời kỳ này.`,
+
+    "VUA BẢO ĐẠI":
+`Đây là vua Bảo Đại, vị hoàng đế cuối cùng của triều Nguyễn và cũng là vị vua cuối cùng của chế độ quân chủ Việt Nam.
+Tên tuổi của ông gắn với giai đoạn khép lại của một triều đại đã tồn tại hơn một thế kỷ.
+Nhắc đến vua Bảo Đại là nhắc đến dấu mốc kết thúc của một thời đại trong lịch sử dân tộc.`
+  };
+
+  const quizBank = [
+    { q:"Ai là vị vua đầu tiên của triều Nguyễn?", correct:"VUA GIA LONG", options:["VUA GIA LONG","VUA MINH MẠNG","VUA TỰ ĐỨC","VUA BẢO ĐẠI"] },
+    { q:"Vị vua nào nổi tiếng với tinh thần Cần Vương chống Pháp?", correct:"VUA HÀM NGHI", options:["VUA HÀM NGHI","VUA KHẢI ĐỊNH","VUA ĐỒNG KHÁNH","VUA HIỆP HÒA"] },
+    { q:"Vị vua nào ở ngôi lâu nhất triều Nguyễn?", correct:"VUA TỰ ĐỨC", options:["VUA TỰ ĐỨC","VUA MINH MẠNG","VUA DUY TÂN","VUA BẢO ĐẠI"] },
+    { q:"Ai là vị vua cuối cùng của triều Nguyễn?", correct:"VUA BẢO ĐẠI", options:["VUA BẢO ĐẠI","VUA GIA LONG","VUA THÀNH THÁI","VUA THIỆU TRỊ"] },
+    { q:"Vị vua nào gắn với tinh thần tuổi trẻ và lòng yêu nước?", correct:"VUA DUY TÂN", options:["VUA DUY TÂN","VUA KIẾN PHÚC","VUA HIỆP HÒA","VUA ĐỒNG KHÁNH"] },
+    { q:"Vị vua nào nổi tiếng với dấu ấn kiến trúc riêng của thời kỳ mình?", correct:"VUA KHẢI ĐỊNH", options:["VUA KHẢI ĐỊNH","VUA GIA LONG","VUA HÀM NGHI","VUA DỤC ĐỨC"] }
+  ];
+
+  // =========================
+  // 2. AUDIO MAP
+  // Hỗ trợ cả tên file mới và tên file cũ
+  // =========================
+  const audioCandidates = {
+    welcome: ["welcome.mp3", "intro.mp3"],
+    next: ["next-king.mp3", "next.mp3"],
+    outro: ["outro.mp3"],
+
+    "VUA GIA LONG": ["gia-long.mp3", "GIA LONG.mp3"],
+    "VUA MINH MẠNG": ["minh-mang.mp3", "MINH MẠNG.mp3"],
+    "VUA THIỆU TRỊ": ["thieu-tri.mp3", "THIỆU TRỊ.mp3"],
+    "VUA TỰ ĐỨC": ["tu-duc.mp3", "TỰ ĐỨC.mp3"],
+    "VUA DỤC ĐỨC": ["duc-duc.mp3", "DỤC ĐỨC.mp3"],
+    "VUA HIỆP HÒA": ["hiep-hoa.mp3", "HIỆP HÒA.mp3"],
+    "VUA KIẾN PHÚC": ["kien-phuc.mp3", "KIẾN PHÚC.mp3"],
+    "VUA HÀM NGHI": ["ham-nghi.mp3", "HÀM NGHI.mp3"],
+    "VUA ĐỒNG KHÁNH": ["dong-khanh.mp3", "ĐỒNG KHÁNH.mp3"],
+    "VUA THÀNH THÁI": ["thanh-thai.mp3", "THÀNH THÁI.mp3"],
+    "VUA DUY TÂN": ["duy-tan.mp3", "DUY TÂN.mp3"],
+    "VUA KHẢI ĐỊNH": ["khai-dinh.mp3", "KHẢI ĐỊNH.mp3"],
+    "VUA BẢO ĐẠI": ["bao-dai.mp3", "BẢO ĐẠI.mp3"]
+  };
+
+  // =========================
+  // 3. DOM
+  // =========================
+  const $ = id => document.getElementById(id);
+
+  const $video = $("video");
+  const $canvas = $("canvas");
+  const ctx = $canvas.getContext("2d");
+
+  const $status = $("status");
+  const $artifactName = $("artifactName");
+  const $confidencePill = $("confidencePill");
+  const $detectProgress = $("detectProgress");
+  const $detectBar = $("detectBar");
+  const $desc = $("desc");
+
+  const $timelineToggle = $("timelineToggle");
+  const $timelineBox = $("timelineBox");
+  const $timelineText = $("timelineText");
+  const $timelineMeta = $("timelineMeta");
+  const $timelineNodes = $("timelineNodes");
+
+  const $quizBox = $("quizBox");
+  const $quizQ = $("quizQ");
+  const $quizOpts = $("quizOpts");
+  const $quizFeedback = $("quizFeedback");
+
+  const $btnStart = $("btnStart");
+  const $btnStop = $("btnStop");
+  const $cameraSelect = $("cameraSelect");
+  const $scanner = $("scanner");
+
+  // =========================
+  // 4. BIẾN HỆ THỐNG
+  // =========================
+  let model = null;
+  let stream = null;
+  let rafId = null;
+  let isRunning = false;
+  let trackingLabel = "";
+  let stableCount = 0;
+  let lastCommittedLabel = "";
+  let lastSpokenTime = 0;
+  let currentAudio = null;
+  let audioUnlocked = false;
+
+  // =========================
+  // 5. HÀM HỖ TRỢ
+  // =========================
+  function setStatus(text){
+    $status.textContent = text;
+  }
+
+  function normalizeLabel(raw){
+    if(!raw) return "";
+    const label = raw.trim().toUpperCase();
+    if(label.startsWith("VUA ")) return label;
+    return "VUA " + label;
+  }
+
+  function displayName(label){
+    return label.replace(/^VUA\s+/, "");
+  }
+
+  function initTimeline(){
+    $timelineNodes.innerHTML = "";
+    for(let i = 1; i <= 13; i++){
+      const node = document.createElement("div");
+      node.className = "node";
+      node.id = "node-" + i;
+      $timelineNodes.appendChild(node);
+    }
+  }
+
+  function resetRightPanel(){
+    $artifactName.innerHTML = "Chưa nhận diện";
+    $confidencePill.textContent = "AI đang chờ hình ảnh...";
+    $detectProgress.classList.remove("active");
+    $detectBar.style.width = "0%";
+    $timelineText.textContent = "Triều Nguyễn";
+    $timelineMeta.textContent = "13 vị vua";
+    $desc.textContent = "Khi AI nhận ra vị vua, phần giới thiệu sẽ hiện ở đây.";
+    $quizBox.classList.add("hidden");
+
+    for(let i = 1; i <= 13; i++){
+      const node = $("node-" + i);
+      if(node) node.className = "node";
+    }
+  }
+
+  async function unlockAudio(){
+    if(audioUnlocked) return;
+    try{
+      const a = new Audio();
+      a.src = "data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAACAAACcQCA";
+      a.volume = 0;
+      await a.play().catch(() => {});
+      a.pause();
+      a.currentTime = 0;
+      audioUnlocked = true;
+    }catch(e){
+      console.log("Không mở khóa được audio:", e);
+    }
+  }
+
+  function stopAudio(){
+    if(currentAudio){
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      currentAudio = null;
+    }
+    const icon = document.querySelector(".speaker");
+    if(icon) icon.remove();
+  }
+
+  async function canPlayFile(fileName){
+    return new Promise(resolve => {
+      const a = new Audio();
+      a.preload = "metadata";
+      a.src = AUDIO_DIR + fileName;
+
+      let done = false;
+      const finish = (result) => {
+        if(done) return;
+        done = true;
+        a.oncanplaythrough = null;
+        a.onerror = null;
+        resolve(result);
+      };
+
+      a.oncanplaythrough = () => finish(true);
+      a.onerror = () => finish(false);
+
+      setTimeout(() => finish(false), 1200);
+    });
+  }
+
+  async function resolveAudioFile(key){
+    const list = audioCandidates[key] || [];
+    for(const file of list){
+      const ok = await canPlayFile(file);
+      if(ok) return file;
+    }
+    return null;
+  }
+
+  async function playAudioByKey(key){
+    const file = await resolveAudioFile(key);
+    if(!file) throw new Error("Không tìm thấy file audio cho key: " + key);
+    await playAudioFile(file);
+  }
+
+  async function playAudioFile(fileName){
+    if(!audioUnlocked) await unlockAudio();
+
+    return new Promise((resolve, reject) => {
+      stopAudio();
+
+      const a = new Audio();
+      a.src = AUDIO_DIR + fileName;
+      a.preload = "auto";
+      a.load();
+      currentAudio = a;
+
+      a.onended = () => {
+        currentAudio = null;
+        resolve();
+      };
+
+      a.onerror = () => {
+        currentAudio = null;
+        reject(new Error("Không đọc được file: " + fileName));
+      };
+
+      a.play().then(() => {}).catch(reject);
+    });
+  }
+
+  async function playRecognitionSequence(label){
+    const icon = document.createElement("span");
+    icon.className = "speaker";
+    icon.textContent = "🔊";
+    $artifactName.appendChild(icon);
+
+    try{
+      await playAudioByKey(label);
+      await playAudioByKey("next");
+    }catch(e){
+      console.error(e);
+      setStatus("Đã nhận diện nhưng không phát được âm thanh. Hãy kiểm tra tên file audio.");
+    }finally{
+      const lastIcon = document.querySelector(".speaker");
+      if(lastIcon) lastIcon.remove();
+    }
+  }
+
+  async function playSimpleAudio(key){
+    try{
+      await playAudioByKey(key);
+    }catch(e){
+      console.error(e);
+    }
+  }
+
+  function playConfirmSound(){
+    try{
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const ac = new AudioCtx();
+      const o = ac.createOscillator();
+      const g = ac.createGain();
+
+      o.type = "sine";
+      o.frequency.setValueAtTime(900, ac.currentTime);
+      o.frequency.exponentialRampToValueAtTime(1300, ac.currentTime + 0.12);
+
+      g.gain.setValueAtTime(0.0001, ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.12, ac.currentTime + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.25);
+
+      o.connect(g);
+      g.connect(ac.destination);
+      o.start();
+      o.stop(ac.currentTime + 0.25);
+    }catch(e){}
+  }
+
+  function updateTimeline(label){
+    const item = timelineData[label];
+    if(!item) return;
+
+    $timelineText.textContent = displayName(label);
+    $timelineMeta.textContent = item.years;
+
+    for(let i = 1; i <= 13; i++){
+      const node = $("node-" + i);
+      if(i < item.order) node.className = "node past";
+      else if(i === item.order) node.className = "node active";
+      else node.className = "node";
+    }
+  }
+
+  function showQuizRelatedTo(label){
+    let list = quizBank.filter(item => item.correct === label);
+    if(list.length === 0) list = quizBank;
+
+    const item = list[Math.floor(Math.random() * list.length)];
+    const options = [...item.options].sort(() => Math.random() - 0.5);
+
+    $quizBox.classList.remove("hidden");
+    $quizQ.textContent = item.q;
+    $quizFeedback.textContent = "";
+    $quizFeedback.className = "quizFeedback";
+    $quizOpts.innerHTML = "";
+
+    options.forEach(opt => {
+      const btn = document.createElement("button");
+      btn.textContent = opt.replace(/^VUA\s+/, "");
+      btn.onclick = () => {
+        [...$quizOpts.children].forEach(b => b.disabled = true);
+
+        if(opt === item.correct){
+          btn.classList.add("correct");
+          $quizFeedback.textContent = "Chính xác!";
+        }else{
+          btn.classList.add("wrong");
+          [...$quizOpts.children].forEach(b => {
+            const original = "VUA " + b.textContent.toUpperCase();
+            if(original === item.correct) b.classList.add("correct");
+          });
+          $quizFeedback.textContent = "Chưa đúng. Đáp án là: " + item.correct.replace(/^VUA\s+/, "") + ".";
+        }
+      };
+      $quizOpts.appendChild(btn);
+    });
+  }
+
+  async function updateVisualsFor(label, prob){
+    $artifactName.innerHTML = displayName(label);
+    $confidencePill.textContent = "Độ tin cậy: " + (prob * 100).toFixed(1) + "%";
+    $desc.textContent = kingCore[label] || "Chưa có dữ liệu thuyết minh cho vị vua này.";
+    updateTimeline(label);
+    showQuizRelatedTo(label);
+
+    const now = Date.now();
+    if(now - lastSpokenTime >= COOLDOWN_MS){
+      lastSpokenTime = now;
+      await playRecognitionSequence(label);
+    }
+  }
+
+  // =========================
+  // 6. CAMERA VÀ MODEL
+  // =========================
+  async function listCameras(){
+    try{
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cams = devices.filter(d => d.kind === "videoinput");
+      $cameraSelect.innerHTML = "";
+
+      cams.forEach((cam, idx) => {
+        const opt = document.createElement("option");
+        opt.value = cam.deviceId;
+        opt.textContent = cam.label || ("Camera " + (idx + 1));
+        $cameraSelect.appendChild(opt);
+      });
+    }catch(e){
+      console.log(e);
+    }
+  }
+
+  async function loadModelOnce(){
+    if(model) return model;
+    if(typeof tmImage === "undefined"){
+      throw new Error("Chưa tải được thư viện Teachable Machine.");
+    }
+
+    setStatus("Đang tải mô hình AI...");
+    model = await tmImage.load(MODEL_DIR + "model.json", MODEL_DIR + "metadata.json");
+    setStatus("Đã tải xong mô hình AI.");
+    return model;
+  }
+
+  function stopSystem(){
+    isRunning = false;
+
+    if(rafId){
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+
+    if(stream){
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+
+    $video.srcObject = null;
+    $btnStart.disabled = false;
+    $btnStop.disabled = true;
+    $scanner.classList.remove("active");
+
+    trackingLabel = "";
+    stableCount = 0;
+    lastCommittedLabel = "";
+    stopAudio();
+    resetRightPanel();
+
+    setStatus("Đã dừng hệ thống.");
+    playSimpleAudio("outro");
+  }
+
+  async function startSystem(deviceId = null){
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      setStatus("Thiết bị không hỗ trợ camera.");
+      return;
+    }
+
+    try{
+      await unlockAudio();
+      await loadModelOnce();
+
+      if(stream){
+        stream.getTracks().forEach(t => t.stop());
+      }
+
+      resetRightPanel();
+      trackingLabel = "";
+      stableCount = 0;
+      lastCommittedLabel = "";
+      lastSpokenTime = 0;
+
+      const constraints = deviceId
+        ? { video: { deviceId: { exact: deviceId } }, audio: false }
+        : { video: { facingMode: "environment" }, audio: false };
+
+      setStatus("Đang mở camera...");
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+      $video.srcObject = stream;
+      await $video.play();
+
+      await listCameras();
+
+      isRunning = true;
+      $btnStart.disabled = true;
+      $btnStop.disabled = false;
+      $scanner.classList.add("active");
+
+      setStatus("Camera đã bật. Hãy đưa ảnh vị vua vào khung hình.");
+      playSimpleAudio("welcome");
+
+      loopPredict();
+    }catch(e){
+      console.error(e);
+      setStatus("Không mở được camera hoặc mô hình.");
+      $btnStart.disabled = false;
+      $btnStop.disabled = true;
+    }
+  }
+
+  async function loopPredict(){
+    if(!model || !isRunning) return;
+
+    try{
+      ctx.drawImage($video, 0, 0, $canvas.width, $canvas.height);
+      const preds = await model.predict($canvas);
+
+      let best = preds[0];
+      for(const p of preds){
+        if(p.probability > best.probability) best = p;
+      }
+
+      const label = normalizeLabel(best.className);
+      const prob = best.probability;
+
+      if(prob < THRESHOLD){
+        trackingLabel = "";
+        stableCount = 0;
+        $detectProgress.classList.remove("active");
+        $detectBar.style.width = "0%";
+        $confidencePill.textContent = "AI đang quan sát...";
+        rafId = requestAnimationFrame(loopPredict);
+        return;
+      }
+
+      $confidencePill.textContent = "Đang nhận diện: " + displayName(label) + " - " + (prob * 100).toFixed(1) + "%";
+
+      if(label === trackingLabel) stableCount++;
+      else{
+        trackingLabel = label;
+        stableCount = 1;
+      }
+
+      $detectProgress.classList.add("active");
+      $detectBar.style.width = Math.min((stableCount / STABLE_FRAMES) * 100, 100) + "%";
+
+      if(stableCount >= STABLE_FRAMES){
+        stableCount = STABLE_FRAMES;
+
+        if(label !== lastCommittedLabel){
+          lastCommittedLabel = label;
+          playConfirmSound();
+          await updateVisualsFor(label, prob);
+          setStatus("Đã nhận diện: " + displayName(label));
+        }
+      }
+
+      rafId = requestAnimationFrame(loopPredict);
+    }catch(e){
+      console.error(e);
+      rafId = requestAnimationFrame(loopPredict);
+    }
+  }
+
+  // =========================
+  // 7. EVENT
+  // =========================
+  $btnStart.addEventListener("click", async () => {
+    await startSystem($cameraSelect.value || null);
+  });
+
+  $btnStop.addEventListener("click", stopSystem);
+
+  $cameraSelect.addEventListener("change", async () => {
+    if(isRunning){
+      await startSystem($cameraSelect.value);
+    }
+  });
+
+  $timelineToggle.addEventListener("change", () => {
+    $timelineBox.style.display = $timelineToggle.checked ? "block" : "none";
+  });
+
+  window.addEventListener("load", async () => {
+    initTimeline();
+    resetRightPanel();
+    setStatus("Hệ thống đang chờ khởi động.");
+
+    try{
+      await listCameras();
+      loadModelOnce().catch(() => {});
+    }catch(e){}
+  });
+</script>
+</body>
+</html>
